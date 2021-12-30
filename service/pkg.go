@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	srcPath = "src/github.com/csby/gwsf-example"
+	srcPath = "src/github.com/csby/gom"
 )
 
 var (
@@ -46,6 +46,12 @@ func (s *Pkg) Run() {
 	appFileName := fmt.Sprintf("%s%s", appName, binExt)
 	fmt.Println("app file name: ", appFileName)
 
+	// shell
+	shellBinName := fmt.Sprintf("%s%s", "go_build_github_com_csby_gom_gshell", binExt)
+	fmt.Println("shell bin name: ", shellBinName)
+	shellFileName := fmt.Sprintf("%s%s", "gshell", binExt)
+	fmt.Println("shell file name: ", shellFileName)
+
 	tmpFolder := filepath.Dir(binFolder)
 	srcFolder := filepath.Join(filepath.Dir(tmpFolder), srcPath)
 	fmt.Println("source folder path: ", srcFolder)
@@ -58,7 +64,7 @@ func (s *Pkg) Run() {
 	fmt.Println("vue folder path: ", vueFolder)
 	docFolder := filepath.Join(vueFolder, "gwsf-doc")
 	fmt.Println("doc folder path: ", docFolder)
-	optFolder := filepath.Join(vueFolder, "gwsf-opt")
+	optFolder := filepath.Join(vueFolder, "gom-opt")
 	fmt.Println("opt folder path: ", optFolder)
 
 	c := &gpkg.Config{
@@ -72,7 +78,8 @@ func (s *Pkg) Run() {
 				Bin: gpkg.Binary{
 					Root: binFolder,
 					Files: map[string]string{
-						binName: appFileName,
+						binName:      appFileName,
+						shellBinName: shellFileName,
 					},
 				},
 				Src: gpkg.Source{

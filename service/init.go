@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/csby/gom/config"
 	"github.com/csby/gwsf/glog"
 	"github.com/csby/gwsf/gserver"
 	"github.com/csby/gwsf/gtype"
@@ -13,13 +14,13 @@ import (
 
 const (
 	moduleType    = "server"
-	moduleName    = "gwsf-svc-example"
-	moduleRemark  = "WEB服务示例"
+	moduleName    = "gom"
+	moduleRemark  = "操作系统管理器"
 	moduleVersion = "1.0.1.0"
 )
 
 var (
-	cfg              = NewConfig()
+	cfg              = config.NewConfig()
 	log              = &glog.Writer{Level: glog.LevelAll}
 	svr gtype.Server = nil
 )
@@ -89,6 +90,14 @@ func init() {
 	}
 	if cfg.Site.Opt.Path == "" {
 		cfg.Site.Opt.Path = filepath.Join(rootFolder, "site", "opt")
+	}
+
+	// init path of system service
+	if cfg.Sys.Svc.Custom.App == "" {
+		cfg.Sys.Svc.Custom.App = filepath.Join(rootFolder, "svc", "custom")
+	}
+	if cfg.Sys.Svc.Custom.Log == "" {
+		cfg.Sys.Svc.Custom.Log = filepath.Join(rootFolder, "log", "svc", "custom")
 	}
 
 	// init service

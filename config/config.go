@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"encoding/json"
@@ -13,6 +13,8 @@ import (
 type Config struct {
 	sync.RWMutex
 	gcfg.Config
+
+	Sys System `json:"sys" note:"系统管理"`
 }
 
 func NewConfig() *Config {
@@ -24,12 +26,12 @@ func NewConfig() *Config {
 			},
 			Http: gcfg.Http{
 				Enabled:     true,
-				Port:        8085,
+				Port:        80,
 				BehindProxy: false,
 			},
 			Https: gcfg.Https{
 				Enabled:     false,
-				Port:        8443,
+				Port:        443,
 				BehindProxy: false,
 				Cert: gcfg.Crt{
 					Ca: gcfg.CrtCa{
