@@ -26,15 +26,15 @@ func init() {
 		log.folder = args[2]
 	}
 
-	log.Info("shell run at: ", path)
-	log.Info("svc folder: ", svcDir)
-	log.Info("log folder: ", log.folder)
-
 	if len(svcDir) > 0 {
 		os.Chdir(svcDir)
 	}
 	curDir, _ := os.Getwd()
-	log.Info("current directory: ", curDir)
+
+	log.Info("shell run at: ", path)
+	log.Info("log folder: ", log.folder)
+	log.Info("cur folder: ", curDir)
+	log.Info("svc folder: ", svcDir)
 
 	server.shell.Directory = svcDir
 }

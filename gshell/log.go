@@ -50,7 +50,7 @@ func (s *LogWriter) Close() error {
 }
 
 func (s *LogWriter) Info(v ...interface{}) string {
-	return s.output("INFO", fmt.Sprint(v...))
+	return s.output(" INFO", fmt.Sprint(v...))
 }
 
 func (s *LogWriter) Error(v ...interface{}) string {

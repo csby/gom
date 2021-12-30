@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,13 +13,14 @@ type shell struct {
 	Directory string
 	Exec      string
 	Args      string
+
+	kill func() error
 }
 
 func (s *shell) Run() {
 	name := s.Exec
 	path, err := filepath.Abs(name)
 	if err == nil {
-		log.Info("exec abs path: ", path)
 		fi, fe := os.Stat(path)
 		if !os.IsNotExist(fe) {
 			if !fi.IsDir() {
@@ -43,7 +45,15 @@ func (s *shell) Run() {
 	if err != nil {
 		log.Error("start exec fail: ", err)
 	} else {
-		log.Info("start exec success: ", cmd.String())
+		log.Info(fmt.Sprintf("start exec success [%d]: %s", cmd.Process.Pid, cmd.String()))
+		s.kill = cmd.Process.Kill
 	}
+
 	cmd.Wait()
+}
+
+func (s *shell) Shut() {
+	if s.kill != nil {
+		s.kill()
+	}
 }

@@ -13,11 +13,11 @@ import (
 type ServiceCustomInfo struct {
 	sync.RWMutex
 
-	Name string `json:"name" note:"服务名称"`
+	Name string `json:"name" note:"项目名称"`
 	Exec string `json:"exec" note:"可执行程序"`
 	Args string `json:"args" note:"程序启动参数"`
 
-	SystemName  string             `json:"systemName" note:"系统服务名称"`
+	ServiceName string             `json:"serviceName" note:"服务名称"`
 	DisplayName string             `json:"displayName" note:"显示名称"`
 	Description string             `json:"description" note:"描述信息"`
 	Folder      string             `json:"folder" note:"物理目录"`
@@ -63,6 +63,6 @@ func (s *ServiceCustomInfo) SaveToFile(filePath string) error {
 	return err
 }
 
-func (s *ServiceCustomInfo) ServiceName() string {
-	return fmt.Sprintf("svc-%s", s.Name)
+func (s *ServiceCustomInfo) GetServiceName() string {
+	return fmt.Sprintf("svc-cst-%s", s.Name)
 }

@@ -30,13 +30,13 @@ func (s *Service) GetCustoms(ctx gtype.Context, ps gtype.Params) {
 					info := &model.ServiceCustomInfo{}
 					err := info.LoadFromFile(infoPath)
 					if err == nil {
-						info.SystemName = info.ServiceName()
+						info.ServiceName = info.GetServiceName()
 						info.Folder = filepath.Dir(infoPath)
 						info.DeployTime = gtype.DateTime(f.ModTime())
 						if len(info.DisplayName) < 1 {
 							info.DisplayName = info.Name
 						}
-						info.Status, _ = s.getStatus(info.SystemName)
+						info.Status, _ = s.getStatus(info.GetServiceName())
 						results = append(results, info)
 					}
 				}
@@ -53,7 +53,7 @@ func (s *Service) GetCustomsDoc(doc gtype.Doc, method string, uri gtype.Uri) {
 	function.SetOutputDataExample([]*model.ServiceCustomInfo{
 		{
 			Name:        "example",
-			SystemName:  "svc-example",
+			ServiceName: "svc-cst-example",
 			DisplayName: "自定义服务示例",
 			DeployTime:  gtype.DateTime(time.Now()),
 		},
@@ -138,25 +138,33 @@ func (s *Service) AddCustom(ctx gtype.Context, ps gtype.Params) {
 		return
 	}
 
-	info.SystemName = info.ServiceName()
+	info.ServiceName = info.GetServiceName()
 	info.DeployTime = gtype.DateTime(time.Now())
 	info.Folder = srvFolder
+	info.Status, _ = s.getStatus(info.GetServiceName())
 	go s.writeOptMessage(socket.WSCustomSvcAdded, info)
 
-	err = s.installCustom(info)
-	if err != nil {
-		ctx.Error(gtype.ErrInternal, "上传成功, 但安装失败: ", err)
-		return
+	if info.Status == gtype.ServerStatusRunning {
+		s.stop(info.GetServiceName())
+		time.Sleep(5 * time.Second)
 	}
 
-	err = s.start(info.ServiceName())
+	if info.Status == gtype.ServerStatusUnknown {
+		err = s.installCustom(info)
+		if err != nil {
+			ctx.Error(gtype.ErrInternal, "上传成功, 但安装失败: ", err)
+			return
+		}
+	}
+
+	err = s.start(info.GetServiceName())
 	if err != nil {
 		ctx.Error(gtype.ErrInternal, "上传并安装成功, 但启动失败: ", err)
 		return
 	}
 
-	svcStatus := &model.ServiceStatus{Name: info.ServiceName()}
-	svcStatus.Status, err = s.getStatus(info.ServiceName())
+	svcStatus := &model.ServiceStatus{Name: info.GetServiceName()}
+	svcStatus.Status, err = s.getStatus(info.GetServiceName())
 	if err == nil {
 		go s.writeOptMessage(socket.WSSvcStatusChanged, svcStatus)
 	}
@@ -173,7 +181,7 @@ func (s *Service) AddCustomDoc(doc gtype.Doc, method string, uri gtype.Uri) {
 	function.AddInputForm(true, "file", "服务程序打包文件(.zip或.tar.gz)", gtype.FormValueKindFile, nil)
 	function.SetOutputDataExample(&model.ServiceCustomInfo{
 		Name:        "example",
-		SystemName:  "svc-example",
+		ServiceName: "svc-cst-example",
 		DisplayName: "自定义服务示例",
 		DeployTime:  gtype.DateTime(time.Now()),
 	})
@@ -254,28 +262,38 @@ func (s *Service) ModCustom(ctx gtype.Context, ps gtype.Params) {
 		return
 	}
 
-	svcStatus := &model.ServiceStatus{Name: info.ServiceName()}
-	svcStatus.Status, err = s.getStatus(info.ServiceName())
-	if err != nil {
+	svcStatus := &model.ServiceStatus{Name: info.GetServiceName()}
+	svcStatus.Status, err = s.getStatus(info.GetServiceName())
+	if err == nil {
 		if svcStatus.Status == gtype.ServerStatusRunning {
-			err = s.stop(info.ServiceName())
+			err = s.stop(info.GetServiceName())
 			if err != nil {
 				ctx.Error(gtype.ErrInternal, "停止服务失败: ", err)
 				return
 			}
 
-			svcStatus.Status, err = s.getStatus(info.ServiceName())
+			time.Sleep(500 * time.Millisecond)
+			svcStatus.Status, err = s.getStatus(info.GetServiceName())
 			if err == nil {
 				go s.writeOptMessage(socket.WSSvcStatusChanged, svcStatus)
 			}
+			time.Sleep(3 * time.Second)
 		}
 	}
 
 	srvFolder := filepath.Join(rootFolder, info.Name)
 	err = os.RemoveAll(srvFolder)
 	if err != nil {
-		ctx.Error(gtype.ErrInternal, "删除原服务文件夹失败: ", err)
-		return
+		time.Sleep(3 * time.Second)
+		err = os.RemoveAll(srvFolder)
+		if err != nil {
+			time.Sleep(5 * time.Second)
+			if err != nil {
+				err = os.RemoveAll(srvFolder)
+				ctx.Error(gtype.ErrInternal, "删除原服务文件夹失败: ", err)
+				return
+			}
+		}
 	}
 
 	err = gfile.Copy(filepath.Dir(infoFilePath), srvFolder)
@@ -284,19 +302,19 @@ func (s *Service) ModCustom(ctx gtype.Context, ps gtype.Params) {
 		return
 	}
 
-	info.SystemName = info.ServiceName()
+	info.ServiceName = info.GetServiceName()
 	info.DeployTime = gtype.DateTime(time.Now())
 	info.Folder = srvFolder
 	go s.writeOptMessage(socket.WSCustomSvcUpdated, info)
 
 	if svcStatus.Status == gtype.ServerStatusStopped {
-		err = s.start(info.ServiceName())
+		err = s.start(info.GetServiceName())
 		if err != nil {
 			ctx.Error(gtype.ErrInternal, "更新成功, 但启动失败: ", err)
 			return
 		}
 	}
-	svcStatus.Status, err = s.getStatus(info.ServiceName())
+	svcStatus.Status, err = s.getStatus(info.GetServiceName())
 	if err == nil {
 		go s.writeOptMessage(socket.WSSvcStatusChanged, svcStatus)
 	}
@@ -314,7 +332,7 @@ func (s *Service) ModCustomDoc(doc gtype.Doc, method string, uri gtype.Uri) {
 	function.AddInputForm(true, "file", "服务程序打包文件(.zip或.tar.gz)", gtype.FormValueKindFile, nil)
 	function.SetOutputDataExample(&model.ServiceCustomInfo{
 		Name:        "example",
-		SystemName:  "svc-example",
+		ServiceName: "svc-cst-example",
 		DisplayName: "自定义服务示例",
 		DeployTime:  gtype.DateTime(time.Now()),
 	})
@@ -356,8 +374,8 @@ func (s *Service) DelCustom(ctx gtype.Context, ps gtype.Params) {
 	}
 	info.Folder = infoFolder
 
-	svcStatus := &model.ServiceStatus{Name: info.ServiceName()}
-	svcStatus.Status, err = s.getStatus(info.ServiceName())
+	svcStatus := &model.ServiceStatus{Name: info.GetServiceName()}
+	svcStatus.Status, err = s.getStatus(info.GetServiceName())
 	if err != nil {
 		ctx.Error(gtype.ErrInternal, "获取服务状态失败: ", err)
 		return
@@ -423,8 +441,8 @@ func (s *Service) InstallCustom(ctx gtype.Context, ps gtype.Params) {
 		return
 	}
 
-	svcStatus := &model.ServiceStatus{Name: info.ServiceName()}
-	svcStatus.Status, err = s.getStatus(info.ServiceName())
+	svcStatus := &model.ServiceStatus{Name: info.GetServiceName()}
+	svcStatus.Status, err = s.getStatus(info.GetServiceName())
 	if err == nil {
 		go s.writeOptMessage(socket.WSSvcStatusChanged, svcStatus)
 	}
@@ -470,13 +488,13 @@ func (s *Service) UninstallCustom(ctx gtype.Context, ps gtype.Params) {
 		return
 	}
 
-	err = s.uninstall(info.ServiceName())
+	err = s.uninstall(info.GetServiceName())
 	if err != nil {
 		ctx.Error(gtype.ErrInternal, err)
 		return
 	}
-	svcStatus := &model.ServiceStatus{Name: info.ServiceName()}
-	svcStatus.Status, err = s.getStatus(info.ServiceName())
+	svcStatus := &model.ServiceStatus{Name: info.GetServiceName()}
+	svcStatus.Status, err = s.getStatus(info.GetServiceName())
 	go s.writeOptMessage(socket.WSSvcStatusChanged, svcStatus)
 
 	ctx.Success(info)
@@ -520,14 +538,14 @@ func (s *Service) StartCustom(ctx gtype.Context, ps gtype.Params) {
 		return
 	}
 
-	err = s.start(info.ServiceName())
+	err = s.start(info.GetServiceName())
 	if err != nil {
 		ctx.Error(gtype.ErrInternal, err)
 		return
 	}
 
-	svcStatus := &model.ServiceStatus{Name: info.ServiceName()}
-	svcStatus.Status, err = s.getStatus(info.ServiceName())
+	svcStatus := &model.ServiceStatus{Name: info.GetServiceName()}
+	svcStatus.Status, err = s.getStatus(info.GetServiceName())
 	if err == nil {
 		go s.writeOptMessage(socket.WSSvcStatusChanged, svcStatus)
 	}
@@ -573,13 +591,13 @@ func (s *Service) StopCustom(ctx gtype.Context, ps gtype.Params) {
 		return
 	}
 
-	err = s.stop(info.ServiceName())
+	err = s.stop(info.GetServiceName())
 	if err != nil {
 		ctx.Error(gtype.ErrInternal, err)
 		return
 	}
-	svcStatus := &model.ServiceStatus{Name: info.ServiceName()}
-	svcStatus.Status, err = s.getStatus(info.ServiceName())
+	svcStatus := &model.ServiceStatus{Name: info.GetServiceName()}
+	svcStatus.Status, err = s.getStatus(info.GetServiceName())
 	if err == nil {
 		go s.writeOptMessage(socket.WSSvcStatusChanged, svcStatus)
 	}
@@ -625,13 +643,13 @@ func (s *Service) RestartCustom(ctx gtype.Context, ps gtype.Params) {
 		return
 	}
 
-	err = s.restart(info.ServiceName())
+	err = s.restart(info.GetServiceName())
 	if err != nil {
 		ctx.Error(gtype.ErrInternal, err)
 		return
 	}
-	svcStatus := &model.ServiceStatus{Name: info.ServiceName()}
-	svcStatus.Status, err = s.getStatus(info.ServiceName())
+	svcStatus := &model.ServiceStatus{Name: info.GetServiceName()}
+	svcStatus.Status, err = s.getStatus(info.GetServiceName())
 	if err == nil {
 		go s.writeOptMessage(socket.WSSvcStatusChanged, svcStatus)
 	}
@@ -669,9 +687,7 @@ func (s *Service) GetCustomLogFiles(ctx gtype.Context, ps gtype.Params) {
 		ctx.Error(gtype.ErrInternal, "服务物理根路径为空")
 		return
 	}
-	logFolder := filepath.Join(rootFolder, argument.Name)
-
-	results := s.getFiles(logFolder)
+	results := s.getFiles(rootFolder, argument.Name)
 
 	ctx.Success(results)
 }
@@ -699,17 +715,27 @@ func (s *Service) GetCustomLogFilesDoc(doc gtype.Doc, method string, uri gtype.U
 func (s *Service) DownloadCustomLogFile(ctx gtype.Context, ps gtype.Params) {
 	path := ps.ByName("path")
 	if len(path) < 1 {
-		ctx.Error(gtype.ErrInput, "路径为空")
+		ctx.Error(gtype.ErrInput, "路径base64为空")
 		return
 	}
 
 	pathData, err := base64.URLEncoding.DecodeString(path)
 	if err != nil {
-		ctx.Error(gtype.ErrInput, fmt.Sprintf("路径(%s)无效", path))
+		ctx.Error(gtype.ErrInput, fmt.Sprintf("路径base64(%s)无效", path))
+		return
+	}
+	if len(pathData) < 1 {
+		ctx.Error(gtype.ErrInput, "路径为空")
 		return
 	}
 
-	logPath := string(pathData)
+	rootFolder := s.cfg.Sys.Svc.Custom.Log
+	if len(rootFolder) < 1 {
+		ctx.Error(gtype.ErrInternal, "服务物理根路径为空")
+		return
+	}
+
+	logPath := filepath.Join(rootFolder, string(pathData))
 	fi, fe := os.Stat(logPath)
 	if os.IsNotExist(fe) {
 		ctx.Error(gtype.ErrInternal, fe)
@@ -743,17 +769,27 @@ func (s *Service) DownloadCustomLogFileDoc(doc gtype.Doc, method string, uri gty
 func (s *Service) ViewCustomLogFile(ctx gtype.Context, ps gtype.Params) {
 	path := ps.ByName("path")
 	if len(path) < 1 {
-		ctx.Error(gtype.ErrInput, "路径为空")
+		ctx.Error(gtype.ErrInput, "base64路径为空")
 		return
 	}
 
 	pathData, err := base64.URLEncoding.DecodeString(path)
 	if err != nil {
-		ctx.Error(gtype.ErrInput, fmt.Sprintf("路径(%s)无效", path))
+		ctx.Error(gtype.ErrInput, fmt.Sprintf("路径base64(%s)无效", path))
+		return
+	}
+	if len(pathData) < 1 {
+		ctx.Error(gtype.ErrInput, "路径为空")
 		return
 	}
 
-	logPath := string(pathData)
+	rootFolder := s.cfg.Sys.Svc.Custom.Log
+	if len(rootFolder) < 1 {
+		ctx.Error(gtype.ErrInternal, "服务物理根路径为空")
+		return
+	}
+
+	logPath := filepath.Join(rootFolder, string(pathData))
 	fi, fe := os.Stat(logPath)
 	if os.IsNotExist(fe) {
 		ctx.Error(gtype.ErrInternal, fe)
@@ -797,7 +833,7 @@ func (s *Service) installCustom(info *model.ServiceCustomInfo) error {
 		logFolder = filepath.Join(s.cfg.Sys.Svc.Custom.Log, info.Name)
 	}
 	cfg := &service.Config{
-		Name:        info.ServiceName(),
+		Name:        info.GetServiceName(),
 		Description: info.Description,
 		Arguments:   []string{info.Folder, logFolder},
 		Executable:  executable,

@@ -19,6 +19,7 @@ func (s *program) Start(svc service.Service) error {
 
 func (s *program) Stop(svc service.Service) error {
 	log.Info("service '", svc.String(), "' stopped")
+	s.shut()
 
 	return nil
 }
@@ -35,4 +36,8 @@ func (s *program) Run() {
 
 func (s *program) run() {
 	s.shell.Run()
+}
+
+func (s *program) shut() {
+	s.shell.Shut()
 }

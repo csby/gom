@@ -12,13 +12,13 @@ import (
 type Info struct {
 	sync.RWMutex
 
-	Name string `json:"name" note:"服务名称"`
+	Name string `json:"name" note:"项目名称"`
 	Exec string `json:"exec" note:"可执行程序"`
 	Args string `json:"args" note:"程序启动参数"`
 }
 
 func (s *Info) ServiceName() string {
-	return fmt.Sprintf("svc-%s", s.Name)
+	return fmt.Sprintf("svc-cst-%s", s.Name)
 }
 
 func (s *Info) LoadFromFile(filePath string) error {

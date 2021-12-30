@@ -94,10 +94,10 @@ func (s *Service) restart(name string) error {
 	return svc.Restart()
 }
 
-func (s *Service) getFiles(folder string) []*model.ServiceLogFile {
+func (s *Service) getFiles(root, folder string) []*model.ServiceLogFile {
 	files := make([]*model.ServiceLogFile, 0)
 
-	fs, fe := ioutil.ReadDir(folder)
+	fs, fe := ioutil.ReadDir(filepath.Join(root, folder))
 	if fe != nil {
 		return files
 	}
