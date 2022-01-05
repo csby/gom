@@ -8,13 +8,17 @@ import (
 	"github.com/csby/gwsf/gtype"
 	"github.com/kardianos/service"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 )
 
 const (
 	svcCatalogRoot   = "系统服务"
+	svcCatalogTomcat = "tomcat"
 	svcCatalogCustom = "自定义"
+	svcCatalogOther  = "其他"
 )
 
 func NewService(log gtype.Log, cfg *config.Config, wsc gtype.SocketChannelCollection) *Service {
@@ -22,6 +26,8 @@ func NewService(log gtype.Log, cfg *config.Config, wsc gtype.SocketChannelCollec
 	inst.SetLog(log)
 	inst.cfg = cfg
 	inst.wsc = wsc
+
+	inst.removeCustomLogs()
 
 	return inst
 }
@@ -94,8 +100,8 @@ func (s *Service) restart(name string) error {
 	return svc.Restart()
 }
 
-func (s *Service) getFiles(root, folder string) []*model.ServiceLogFile {
-	files := make([]*model.ServiceLogFile, 0)
+func (s *Service) getFiles(root, folder string) model.ServiceLogFileCollection {
+	files := make(model.ServiceLogFileCollection, 0)
 
 	fs, fe := ioutil.ReadDir(filepath.Join(root, folder))
 	if fe != nil {
@@ -117,4 +123,22 @@ func (s *Service) getFiles(root, folder string) []*model.ServiceLogFile {
 	}
 
 	return files
+}
+
+func (s *Service) removeFiles(folder string, now time.Time, expiration time.Duration) {
+	fs, fe := ioutil.ReadDir(folder)
+	if fe != nil {
+		return
+	}
+
+	for _, f := range fs {
+		path := filepath.Join(folder, f.Name())
+		if f.IsDir() {
+			s.removeFiles(path, now, expiration)
+		} else {
+			if now.Sub(f.ModTime()) > expiration {
+				os.Remove(path)
+			}
+		}
+	}
 }

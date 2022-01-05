@@ -83,7 +83,7 @@ func (s *LogWriter) getLogger() io.Writer {
 			}
 
 			os.MkdirAll(s.folder, 0777)
-			fileName := fmt.Sprintf("%d-%d-%d.log", now.Year(), int(now.Month()), now.Day())
+			fileName := fmt.Sprintf("%s.log", now.Format("2006-01-02"))
 			filePath := filepath.Join(s.folder, fileName)
 			file, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 			if err != nil {

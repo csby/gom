@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -65,4 +66,18 @@ func (s *ServiceCustomInfo) SaveToFile(filePath string) error {
 
 func (s *ServiceCustomInfo) GetServiceName() string {
 	return fmt.Sprintf("svc-cst-%s", s.Name)
+}
+
+type ServiceCustomInfoCollection []*ServiceCustomInfo
+
+func (s ServiceCustomInfoCollection) Len() int {
+	return len(s)
+}
+
+func (s ServiceCustomInfoCollection) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s ServiceCustomInfoCollection) Less(i, j int) bool {
+	return strings.Compare(s[i].Name, s[j].Name) < 0
 }

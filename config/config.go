@@ -26,12 +26,12 @@ func NewConfig() *Config {
 			},
 			Http: gcfg.Http{
 				Enabled:     true,
-				Port:        80,
+				Port:        9618,
 				BehindProxy: false,
 			},
 			Https: gcfg.Https{
 				Enabled:     false,
-				Port:        443,
+				Port:        9613,
 				BehindProxy: false,
 				Cert: gcfg.Crt{
 					Ca: gcfg.CrtCa{
@@ -56,6 +56,12 @@ func NewConfig() *Config {
 						},
 					},
 				},
+			},
+		},
+		Sys: System{
+			Svc: Service{
+				Tomcats: []*ServiceTomcat{},
+				Others:  []*ServiceOther{},
 			},
 		},
 	}
