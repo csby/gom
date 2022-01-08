@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/csby/gwsf/gcfg"
+	"github.com/csby/gwsf/gtype"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -14,7 +15,8 @@ type Config struct {
 	sync.RWMutex
 	gcfg.Config
 
-	Sys System `json:"sys" note:"系统管理"`
+	Sys          System `json:"sys" note:"系统管理"`
+	ReverseProxy Proxy  `json:"reverseProxy" note:"反向代理配置"`
 }
 
 func NewConfig() *Config {
@@ -64,7 +66,36 @@ func NewConfig() *Config {
 				Others:  []*ServiceOther{},
 			},
 		},
+		ReverseProxy: Proxy{
+			Servers: []*ProxyServer{
+				{
+					Id:      gtype.NewGuid(),
+					Name:    "http",
+					Disable: true,
+					TLS:     false,
+					IP:      "",
+					Port:    "80",
+					Targets: []*ProxyTarget{},
+				},
+				{
+					Id:      gtype.NewGuid(),
+					Name:    "https",
+					Disable: true,
+					TLS:     true,
+					IP:      "",
+					Port:    "443",
+					Targets: []*ProxyTarget{},
+				},
+			},
+		},
 	}
+}
+
+func (s *Config) FromFile() (*Config, error) {
+	cfg := &Config{}
+	err := cfg.LoadFromFile(s.Path)
+
+	return cfg, err
 }
 
 func (s *Config) LoadFromFile(filePath string) error {
@@ -76,7 +107,12 @@ func (s *Config) LoadFromFile(filePath string) error {
 		return err
 	}
 
-	return json.Unmarshal(bytes, s)
+	err = json.Unmarshal(bytes, s)
+	if err == nil {
+		s.ReverseProxy.initId()
+	}
+
+	return err
 }
 
 func (s *Config) SaveToFile(filePath string) error {

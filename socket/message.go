@@ -16,4 +16,17 @@ const (
 	WSTomcatCfgDeleted = 1043 // 删除tomcat配置
 
 	WSNetworkThroughput = 2011 // 网络吞吐量
+	WSCpuUsage          = 2012 // CPU使用率
+
+	WSReviseProxyServiceStatus  = 3001 // 反向代理服务状态信息
+	WSReviseProxyConnectionOpen = 3002 // 反向代理连接已打开
+	WSReviseProxyConnectionShut = 3003 // 反向代理连接已关闭
+
+	WSReviseProxyServerAdd = 3011 // 反向代理添加服务器
+	WSReviseProxyServerDel = 3012 // 反向代理删除服务器
+	WSReviseProxyServerMod = 3013 // 反向代理修改服务器
+
+	WSReviseProxyTargetAdd = 3021 // 反向代理添加目标地址
+	WSReviseProxyTargetDel = 3022 // 反向代理删除目标地址
+	WSReviseProxyTargetMod = 3023 // 反向代理修改目标地址
 )

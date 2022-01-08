@@ -117,9 +117,7 @@ func (s *Monitor) GetNetworkThroughputDoc(doc gtype.Doc, method string, uri gtyp
 	function.AddOutputError(gtype.ErrInput)
 }
 
-func (s *Monitor) doStatNetworkIO() {
-	interval := time.Second
-
+func (s *Monitor) doStatNetworkIO(interval time.Duration) {
 	for {
 		time.Sleep(interval)
 

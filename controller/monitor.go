@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"github.com/csby/gom/config"
 	"github.com/csby/gwsf/gtype"
+	"time"
 )
 
 const (
 	monitorCatalogRoot    = "系统资源"
 	monitorCatalogDisk    = "磁盘"
 	monitorCatalogNetwork = "网络"
+	monitorCatalogCpu     = "处理器"
 )
 
 func NewMonitor(log gtype.Log, cfg *config.Config, wsc gtype.SocketChannelCollection) *Monitor {
@@ -18,11 +20,17 @@ func NewMonitor(log gtype.Log, cfg *config.Config, wsc gtype.SocketChannelCollec
 	inst.cfg = cfg
 	inst.wsc = wsc
 
+	maxCount := 30
 	inst.faces = &NetworkInterfaceCollection{
-		MaxCounter: 30,
+		MaxCounter: maxCount,
+	}
+	inst.cpuUsage = &NetworkCpuUsage{
+		Count: maxCount,
 	}
 
-	go inst.doStatNetworkIO()
+	interval := time.Second
+	go inst.doStatNetworkIO(interval)
+	go inst.doStatCpuUsage(interval)
 
 	return inst
 }
@@ -30,7 +38,9 @@ func NewMonitor(log gtype.Log, cfg *config.Config, wsc gtype.SocketChannelCollec
 type Monitor struct {
 	base
 
-	faces *NetworkInterfaceCollection
+	faces    *NetworkInterfaceCollection
+	cpuUsage *NetworkCpuUsage
+	cupName  string
 }
 
 func (s *Monitor) toSpeedText(v float64) string {
@@ -42,9 +52,7 @@ func (s *Monitor) toSpeedText(v float64) string {
 		return fmt.Sprintf("%.1fGbps", v/gb)
 	} else if v >= mb {
 		return fmt.Sprintf("%.1fMbps", v/mb)
-	} else if v >= kb {
-		return fmt.Sprintf("%.1fKbps", v/kb)
 	} else {
-		return fmt.Sprintf("%.0fBps", v)
+		return fmt.Sprintf("%.1fKbps", v/kb)
 	}
 }

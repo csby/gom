@@ -8,11 +8,13 @@ import (
 type Controllers struct {
 	svc     *controller.Service
 	monitor *controller.Monitor
+	proxy   *controller.Proxy
 }
 
 func (s *Controllers) initController(wsc gtype.SocketChannelCollection) {
 	s.svc = controller.NewService(log, cfg, wsc)
 	s.monitor = controller.NewMonitor(log, cfg, wsc)
+	s.proxy = controller.NewProxy(log, cfg, wsc)
 }
 
 func (s *Controllers) initRouter(router gtype.Router, path *gtype.Path, preHandle gtype.HttpHandle) {
@@ -106,4 +108,45 @@ func (s *Controllers) initRouter(router gtype.Router, path *gtype.Path, preHandl
 	router.POST(path.Uri("/monitor/network/throughput/list"), preHandle,
 		s.monitor.GetNetworkThroughput, s.monitor.GetNetworkThroughputDoc)
 
+	// 系统资源-CPU
+	router.POST(path.Uri("/monitor/cpu/usage/list"), preHandle,
+		s.monitor.GetCpuUsage, s.monitor.GetCpuUsageDoc)
+
+	// 反向代理-服务
+	router.POST(path.Uri("/proxy/service/setting/get"), preHandle,
+		s.proxy.GetProxyServiceSetting, s.proxy.GetProxyServiceSettingDoc)
+	router.POST(path.Uri("/proxy/service/setting/set"), preHandle,
+		s.proxy.SetProxyServiceSetting, s.proxy.SetProxyServiceSettingDoc)
+	router.POST(path.Uri("/proxy/service/status"), preHandle,
+		s.proxy.GetProxyServiceStatus, s.proxy.GetProxyServiceStatusDoc)
+	router.POST(path.Uri("/proxy/service/start"), preHandle,
+		s.proxy.StartProxyService, s.proxy.StartProxyServiceDoc)
+	router.POST(path.Uri("/proxy/service/stop"), preHandle,
+		s.proxy.StopProxyService, s.proxy.StopProxyServiceDoc)
+	router.POST(path.Uri("/proxy/service/restart"), preHandle,
+		s.proxy.RestartProxyService, s.proxy.RestartProxyServiceDoc)
+
+	// 反向代理-连接
+	router.POST(path.Uri("/proxy/conn/list"), preHandle,
+		s.proxy.GetProxyLinks, s.proxy.GetProxyLinksDoc)
+
+	// 反向代理-端口
+	router.POST(path.Uri("/proxy/server/list"), preHandle,
+		s.proxy.GetProxyServers, s.proxy.GetProxyServersDoc)
+	router.POST(path.Uri("/proxy/server/add"), preHandle,
+		s.proxy.AddProxyServer, s.proxy.AddProxyServerDoc)
+	router.POST(path.Uri("/proxy/server/del"), preHandle,
+		s.proxy.DelProxyServer, s.proxy.DelProxyServerDoc)
+	router.POST(path.Uri("/proxy/server/mod"), preHandle,
+		s.proxy.ModifyProxyServer, s.proxy.ModifyProxyServerDoc)
+
+	// 反向代理-目标
+	router.POST(path.Uri("/proxy/target/list"), preHandle,
+		s.proxy.GetProxyTargets, s.proxy.GetProxyTargetsDoc)
+	router.POST(path.Uri("/proxy/target/add"), preHandle,
+		s.proxy.AddProxyTarget, s.proxy.AddProxyTargetDoc)
+	router.POST(path.Uri("/proxy/target/del"), preHandle,
+		s.proxy.DelProxyTarget, s.proxy.DelProxyTargetDoc)
+	router.POST(path.Uri("/proxy/target/mod"), preHandle,
+		s.proxy.ModifyProxyTarget, s.proxy.ModifyProxyTargetDoc)
 }
