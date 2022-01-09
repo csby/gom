@@ -53,6 +53,8 @@ func (s *Service) getStatus(name string) (gtype.ServerStatus, error) {
 	if err != nil {
 		if err == service.ErrNotInstalled {
 			return gtype.ServerStatusUnknown, nil
+		} else if err.Error() == "service in failed state" {
+			return gtype.ServerStatusStopped, nil
 		}
 		return gtype.ServerStatusUnknown, err
 	}

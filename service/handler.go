@@ -37,7 +37,7 @@ func (s *Handler) BeforeRouting(ctx gtype.Context) {
 	// default to opt site
 	if method == "GET" {
 		path := ctx.Path()
-		if "/" == path || "" == path || gopt.WebPath == path {
+		if "/" == path || "" == path || gopt.WebPath == path || "/omw" == path || "/omw/" == path || "/omw/#/" == path {
 			redirectUrl := fmt.Sprintf("%s://%s%s/", ctx.Schema(), ctx.Host(), gopt.WebPath)
 			http.Redirect(ctx.Response(), ctx.Request(), redirectUrl, http.StatusMovedPermanently)
 			ctx.SetHandled(true)

@@ -5,6 +5,10 @@ import (
 	"path/filepath"
 )
 
+const (
+	moduleVersion = "1.0.1.0"
+)
+
 var (
 	svcDir = ""
 	server = &program{}
@@ -32,6 +36,7 @@ func init() {
 	curDir, _ := os.Getwd()
 
 	log.Info("shell run at: ", path)
+	log.Info("shell version: ", moduleVersion)
 	log.Info("log folder: ", log.folder)
 	log.Info("cur folder: ", curDir)
 	log.Info("svc folder: ", svcDir)

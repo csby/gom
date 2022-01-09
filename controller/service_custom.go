@@ -144,6 +144,9 @@ func (s *Service) AddCustom(ctx gtype.Context, ps gtype.Params) {
 	info.DeployTime = gtype.DateTime(time.Now())
 	info.Folder = srvFolder
 	info.Status, _ = s.getStatus(info.GetServiceName())
+	if len(info.DisplayName) < 1 {
+		info.DisplayName = info.Name
+	}
 	go s.writeOptMessage(socket.WSCustomSvcAdded, info)
 
 	if info.Status == gtype.ServerStatusRunning {
@@ -307,6 +310,9 @@ func (s *Service) ModCustom(ctx gtype.Context, ps gtype.Params) {
 	info.ServiceName = info.GetServiceName()
 	info.DeployTime = gtype.DateTime(time.Now())
 	info.Folder = srvFolder
+	if len(info.DisplayName) < 1 {
+		info.DisplayName = info.Name
+	}
 	go s.writeOptMessage(socket.WSCustomSvcUpdated, info)
 
 	if svcStatus.Status == gtype.ServerStatusStopped {

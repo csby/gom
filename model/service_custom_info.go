@@ -21,6 +21,8 @@ type ServiceCustomInfo struct {
 	ServiceName string             `json:"serviceName" note:"服务名称"`
 	DisplayName string             `json:"displayName" note:"显示名称"`
 	Description string             `json:"description" note:"描述信息"`
+	Version     string             `json:"version" note:"版本号"`
+	Author      string             `json:"author" note:"作者"`
 	Folder      string             `json:"folder" note:"物理目录"`
 	DeployTime  gtype.DateTime     `json:"deployTime" note:"发布时间"`
 	Status      gtype.ServerStatus `json:"status" note:"状态: 0-未安装; 1-运行中; 2-已停止"`

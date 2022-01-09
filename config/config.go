@@ -44,7 +44,7 @@ func NewConfig() *Config {
 						Password: "",
 					},
 				},
-				RequestClientCert: true,
+				RequestClientCert: false,
 			},
 			Site: gcfg.Site{
 				Doc: gcfg.SiteDoc{
