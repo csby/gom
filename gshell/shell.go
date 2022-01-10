@@ -36,7 +36,16 @@ func (s *shell) Run() {
 		}
 	}
 
-	args := strings.Split(s.Args, " ")
+	args := make([]string, 0)
+	values := strings.Split(s.Args, " ")
+	c := len(values)
+	for i := 0; i < c; i++ {
+		value := strings.TrimSpace(values[i])
+		if len(value) > 0 {
+			args = append(args, value)
+		}
+	}
+
 	cmd := exec.Command(name, args...)
 	cmd.Dir = s.Directory
 	cmd.Stdout = log
