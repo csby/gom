@@ -57,6 +57,12 @@ func (s *LogWriter) Error(v ...interface{}) string {
 	return s.output("ERROR", fmt.Sprint(v...))
 }
 
+func (s *LogWriter) Output(v ...interface{}) string {
+	msg := fmt.Sprint(v...)
+	s.Write([]byte(fmt.Sprintln(msg)))
+	return msg
+}
+
 func (s *LogWriter) output(l string, m string) string {
 	now := time.Now()
 	str := fmt.Sprintf("%s %d --- %s", l, os.Getpid(), m)

@@ -25,6 +25,16 @@ func main() {
 	log.Info("svc args: ", info.Args)
 	server.shell.Exec = info.Exec
 	server.shell.Args = info.Args
+	server.shell.Prepares = info.Prepares
+	c := len(info.Prepares)
+	for i := 0; i < c; i++ {
+		p := info.Prepares[i]
+		if p == nil {
+			continue
+		}
+		log.Info(fmt.Sprintf("prepare %d exec: ", i+1), p.Exec)
+		log.Info(fmt.Sprintf("prepare %d args: ", i+1), p.Args)
+	}
 
 	if service.Interactive() == false {
 		if len(info.Name) < 1 {
