@@ -17,6 +17,7 @@ const (
 
 	WSNetworkThroughput = 2011 // 网络吞吐量
 	WSCpuUsage          = 2012 // CPU使用率
+	WSMemUsage          = 2013 // 内存使用率
 
 	WSReviseProxyServiceStatus  = 3001 // 反向代理服务状态信息
 	WSReviseProxyConnectionOpen = 3002 // 反向代理连接已打开

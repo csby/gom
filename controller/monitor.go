@@ -12,6 +12,7 @@ const (
 	monitorCatalogDisk    = "磁盘"
 	monitorCatalogNetwork = "网络"
 	monitorCatalogCpu     = "处理器"
+	monitorCatalogMemory  = "内存"
 )
 
 func NewMonitor(log gtype.Log, cfg *config.Config, wsc gtype.SocketChannelCollection) *Monitor {
@@ -27,10 +28,14 @@ func NewMonitor(log gtype.Log, cfg *config.Config, wsc gtype.SocketChannelCollec
 	inst.cpuUsage = &NetworkCpuUsage{
 		Count: maxCount,
 	}
+	inst.memUsage = &NetworkMemoryUsage{
+		Count: maxCount,
+	}
 
 	interval := time.Second
 	go inst.doStatNetworkIO(interval)
 	go inst.doStatCpuUsage(interval)
+	go inst.doStatMemoryUsage(10 * interval)
 
 	return inst
 }
@@ -41,6 +46,7 @@ type Monitor struct {
 	faces    *NetworkInterfaceCollection
 	cpuUsage *NetworkCpuUsage
 	cupName  string
+	memUsage *NetworkMemoryUsage
 }
 
 func (s *Monitor) toSpeedText(v float64) string {

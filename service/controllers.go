@@ -112,6 +112,10 @@ func (s *Controllers) initRouter(router gtype.Router, path *gtype.Path, preHandl
 	router.POST(path.Uri("/monitor/cpu/usage/list"), preHandle,
 		s.monitor.GetCpuUsage, s.monitor.GetCpuUsageDoc)
 
+	// 系统资源-内存
+	router.POST(path.Uri("/monitor/mem/usage/list"), preHandle,
+		s.monitor.GetMemoryUsage, s.monitor.GetMemoryUsageDoc)
+
 	// 反向代理-服务
 	router.POST(path.Uri("/proxy/service/setting/get"), preHandle,
 		s.proxy.GetProxyServiceSetting, s.proxy.GetProxyServiceSettingDoc)
