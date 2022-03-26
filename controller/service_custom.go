@@ -12,6 +12,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -818,15 +819,15 @@ func (s *Service) DownloadCustomLogFileDoc(doc gtype.Doc, method string, uri gty
 }
 
 func (s *Service) ViewCustomLogFile(ctx gtype.Context, ps gtype.Params) {
-	path := ps.ByName("path")
-	if len(path) < 1 {
+	pathName := ps.ByName("path")
+	if len(pathName) < 1 {
 		ctx.Error(gtype.ErrInput, "base64路径为空")
 		return
 	}
 
-	pathData, err := base64.URLEncoding.DecodeString(path)
+	pathData, err := base64.URLEncoding.DecodeString(pathName)
 	if err != nil {
-		ctx.Error(gtype.ErrInput, fmt.Sprintf("路径base64(%s)无效", path))
+		ctx.Error(gtype.ErrInput, fmt.Sprintf("路径base64(%s)无效", pathName))
 		return
 	}
 	if len(pathData) < 1 {
@@ -852,6 +853,15 @@ func (s *Service) ViewCustomLogFile(ctx gtype.Context, ps gtype.Params) {
 		return
 	}
 	defer logFile.Close()
+
+	extName := strings.ToLower(path.Ext(logPath))
+	if extName == ".xml" {
+		ctx.Response().Header().Set("Content-Type", "application/xml;charset=utf-8")
+	} else if extName == ".json" {
+		ctx.Response().Header().Set("Content-Type", "application/json;charset=utf-8")
+	} else {
+		ctx.Response().Header().Set("Content-Type", "text/plain;charset=utf-8")
+	}
 
 	contentLength := fi.Size()
 	ctx.Response().Header().Set("Content-Type", gtype.ContentTypeText)

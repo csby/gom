@@ -16,7 +16,7 @@ const (
 	moduleType    = "server"
 	moduleName    = "gom"
 	moduleRemark  = "操作系统管理器"
-	moduleVersion = "1.0.2.0"
+	moduleVersion = "1.0.3.0"
 )
 
 var (
