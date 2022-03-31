@@ -457,6 +457,55 @@ func (s *Service) DelTomcatAppDoc(doc gtype.Doc, method string, uri gtype.Uri) {
 	function.AddOutputError(gtype.ErrInput)
 }
 
+func (s *Service) GetTomcatAppDetail(ctx gtype.Context, ps gtype.Params) {
+	argument := &model.ServiceTomcatArgument{}
+	err := ctx.GetJson(argument)
+	if err != nil {
+		ctx.Error(gtype.ErrInput, err)
+		return
+	}
+	if len(argument.Name) < 1 {
+		ctx.Error(gtype.ErrInput, "服务名称(name)为空")
+		return
+	}
+	if len(argument.App) < 1 {
+		ctx.Error(gtype.ErrInput, " 程序名称(app)为空")
+		return
+	}
+	info := s.cfg.Sys.Svc.GetTomcatByServiceName(argument.Name)
+	if info == nil {
+		ctx.Error(gtype.ErrInternal, fmt.Sprintf("服务(%s)不存在", argument.Name))
+		return
+	}
+
+	rootFolder := info.WebApp
+	if len(rootFolder) < 1 {
+		ctx.Error(gtype.ErrInternal, "物理根路径为空")
+		return
+	}
+	appFolder := filepath.Join(rootFolder, argument.App)
+
+	cfg := &model.FileInfo{}
+	s.getFileInfos(cfg, appFolder)
+
+	cfg.Sort()
+	ctx.Success(cfg)
+}
+
+func (s *Service) GetTomcatDetailDoc(doc gtype.Doc, method string, uri gtype.Uri) {
+	catalog := s.createCatalog(doc, svcCatalogRoot, svcCatalogTomcat)
+	function := catalog.AddFunction(method, uri, "获取应用程序序详细信息")
+	function.SetInputJsonExample(&model.ServiceTomcatArgument{
+		Name: "svc",
+		App:  "app",
+	})
+	function.SetOutputDataExample(&model.FileInfo{})
+	function.AddOutputError(gtype.ErrTokenEmpty)
+	function.AddOutputError(gtype.ErrTokenInvalid)
+	function.AddOutputError(gtype.ErrInternal)
+	function.AddOutputError(gtype.ErrInput)
+}
+
 func (s *Service) GetTomcatConfigs(ctx gtype.Context, ps gtype.Params) {
 	argument := &model.ServerArgument{}
 	err := ctx.GetJson(argument)
@@ -560,7 +609,7 @@ func (s *Service) ViewTomcatConfigFile(ctx gtype.Context, ps gtype.Params) {
 	} else if extName == ".json" {
 		ctx.Response().Header().Set("Content-Type", "application/json;charset=utf-8")
 	} else {
-		ctx.Response().Header().Set("Content-Type", gtype.ContentTypeText)
+		ctx.Response().Header().Set("Content-Type", "text/plain;charset=utf-8")
 	}
 
 	contentLength := fi.Size()

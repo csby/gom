@@ -461,6 +461,45 @@ func (s *Service) DownloadCustomDoc(doc gtype.Doc, method string, uri gtype.Uri)
 	function.AddOutputError(gtype.ErrInput)
 }
 
+func (s *Service) GetCustomDetail(ctx gtype.Context, ps gtype.Params) {
+	argument := &model.ServerArgument{}
+	err := ctx.GetJson(argument)
+	if err != nil {
+		ctx.Error(gtype.ErrInput, err)
+		return
+	}
+	if len(argument.Name) < 1 {
+		ctx.Error(gtype.ErrInternal, "名称(name)为空")
+		return
+	}
+
+	rootFolder := s.cfg.Sys.Svc.Custom.App
+	if len(rootFolder) < 1 {
+		ctx.Error(gtype.ErrInternal, "服务物理根路径为空")
+		return
+	}
+
+	svcFolder := filepath.Join(rootFolder, argument.Name)
+	cfg := &model.FileInfo{}
+	s.getFileInfos(cfg, svcFolder)
+
+	cfg.Sort()
+	ctx.Success(cfg)
+}
+
+func (s *Service) GetCustomDetailDoc(doc gtype.Doc, method string, uri gtype.Uri) {
+	catalog := s.createCatalog(doc, svcCatalogRoot, svcCatalogCustom)
+	function := catalog.AddFunction(method, uri, "获取服务详细信息")
+	function.SetInputJsonExample(&model.ServerArgument{
+		Name: "svc",
+	})
+	function.SetOutputDataExample(&model.FileInfo{})
+	function.AddOutputError(gtype.ErrTokenEmpty)
+	function.AddOutputError(gtype.ErrTokenInvalid)
+	function.AddOutputError(gtype.ErrInternal)
+	function.AddOutputError(gtype.ErrInput)
+}
+
 func (s *Service) InstallCustom(ctx gtype.Context, ps gtype.Params) {
 	argument := &model.ServerArgument{}
 	err := ctx.GetJson(argument)
@@ -740,6 +779,17 @@ func (s *Service) GetCustomLogFiles(ctx gtype.Context, ps gtype.Params) {
 	}
 	results := s.getFiles(rootFolder, argument.Name)
 
+	appLogs := s.getFiles(filepath.Join(s.cfg.Sys.Svc.Custom.App, argument.Name), "log")
+	count := len(appLogs)
+	for index := 0; index < count; index++ {
+		item := appLogs[index]
+		path, pe := base64.URLEncoding.DecodeString(item.Path)
+		if pe == nil {
+			item.Path = base64.URLEncoding.EncodeToString([]byte(filepath.Join(argument.Name, string(path))))
+			results = append(results, item)
+		}
+	}
+
 	sort.Sort(results)
 	ctx.Success(results)
 }
@@ -790,8 +840,14 @@ func (s *Service) DownloadCustomLogFile(ctx gtype.Context, ps gtype.Params) {
 	logPath := filepath.Join(rootFolder, string(pathData))
 	fi, fe := os.Stat(logPath)
 	if os.IsNotExist(fe) {
-		ctx.Error(gtype.ErrInternal, fe)
-		return
+		logPath2 := filepath.Join(s.cfg.Sys.Svc.Custom.App, string(pathData))
+		fi2, fe2 := os.Stat(logPath2)
+		if os.IsNotExist(fe2) {
+			ctx.Error(gtype.ErrInternal, fe, " and ", fe2)
+			return
+		}
+		logPath = logPath2
+		fi = fi2
 	}
 	logFile, le := os.OpenFile(logPath, os.O_RDONLY, 0666)
 	if le != nil {
@@ -844,8 +900,14 @@ func (s *Service) ViewCustomLogFile(ctx gtype.Context, ps gtype.Params) {
 	logPath := filepath.Join(rootFolder, string(pathData))
 	fi, fe := os.Stat(logPath)
 	if os.IsNotExist(fe) {
-		ctx.Error(gtype.ErrInternal, fe)
-		return
+		logPath2 := filepath.Join(s.cfg.Sys.Svc.Custom.App, string(pathData))
+		fi2, fe2 := os.Stat(logPath2)
+		if os.IsNotExist(fe2) {
+			ctx.Error(gtype.ErrInternal, fe, " and ", fe2)
+			return
+		}
+		logPath = logPath2
+		fi = fi2
 	}
 	logFile, le := os.OpenFile(logPath, os.O_RDONLY, 0666)
 	if le != nil {
@@ -864,7 +926,6 @@ func (s *Service) ViewCustomLogFile(ctx gtype.Context, ps gtype.Params) {
 	}
 
 	contentLength := fi.Size()
-	ctx.Response().Header().Set("Content-Type", gtype.ContentTypeText)
 	ctx.Response().Header().Set("Content-Length", fmt.Sprint(contentLength))
 
 	io.Copy(ctx.Response(), logFile)

@@ -15,6 +15,10 @@ const (
 	WSTomcatCfgUpdated = 1042 // 更新tomcat配置
 	WSTomcatCfgDeleted = 1043 // 删除tomcat配置
 
+	WSNginxAppAdded   = 1051 // 添加nginx应用
+	WSNginxAppUpdated = 1052 // 更新nginx应用
+	WSNginxAppDeleted = 1053 // 删除nginx应用
+
 	WSNetworkThroughput = 2011 // 网络吞吐量
 	WSCpuUsage          = 2012 // CPU使用率
 	WSMemUsage          = 2013 // 内存使用率

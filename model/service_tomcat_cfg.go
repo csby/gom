@@ -6,8 +6,8 @@ import (
 )
 
 type ServiceTomcatCfg struct {
-	Name     string                     `json:"name" "名称"`
-	Path     string                     `json:"path" "路径，base64"`
+	Name     string                     `json:"name" note:"名称"`
+	Path     string                     `json:"path" note:"路径，base64"`
 	Folder   bool                       `json:"folder" note:"true-文件夹; false-文件"`
 	Children ServiceTomcatCfgCollection `json:"children" note:"子项"`
 }
