@@ -809,6 +809,7 @@ func (s *Proxy) saveConfig() error {
 
 func (s *Proxy) initRoutes() {
 	s.proxyServer.Routes = make([]gproxy.Route, 0)
+	s.proxyTargets.items = make(map[string]ProxyTargetItem)
 
 	if s.cfg == nil {
 		return
