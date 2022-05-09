@@ -30,6 +30,29 @@ func NewService(log gtype.Log, cfg *config.Config, wsc gtype.SocketChannelCollec
 	inst.cfg = cfg
 	inst.wsc = wsc
 
+	inst.fileServers = make([]*ServiceFileServer, 0)
+	if cfg != nil {
+		c := len(cfg.Sys.Svc.Files)
+		for i := 0; i < c; i++ {
+			fs := cfg.Sys.Svc.Files[i]
+			if fs == nil {
+				continue
+			}
+			if len(fs.Path) < 1 {
+				continue
+			}
+			if len(fs.Root) < 1 {
+				continue
+			}
+
+			inst.fileServers = append(inst.fileServers, &ServiceFileServer{
+				Root:    fs.Root,
+				Path:    fs.Path,
+				Enabled: fs.Enabled,
+			})
+		}
+	}
+
 	inst.removeCustomLogs()
 
 	return inst
@@ -37,6 +60,12 @@ func NewService(log gtype.Log, cfg *config.Config, wsc gtype.SocketChannelCollec
 
 type Service struct {
 	base
+
+	fileServers []*ServiceFileServer
+}
+
+func (s *Service) FileServers() []*ServiceFileServer {
+	return s.fileServers
 }
 
 func (s *Service) getStatus(name string) (gtype.ServerStatus, error) {

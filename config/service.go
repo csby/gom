@@ -5,6 +5,7 @@ type Service struct {
 	Tomcats []*ServiceTomcat `json:"tomcats" note:"tomcat"`
 	Others  []*ServiceOther  `json:"others" note:"其他""`
 	Nginxes []*ServiceNginx  `json:"nginxes" note:"nginx"`
+	Files   []*ServiceFile   `json:"files" note:"文件"`
 }
 
 func (s *Service) GetTomcatByServiceName(name string) *ServiceTomcat {

@@ -55,7 +55,7 @@ func (s ServiceTomcatCfgCollection) Less(i, j int) bool {
 }
 
 type ServiceTomcatCfgFolder struct {
-	Name   string `json:"name" "服务名称"`
-	Path   string `json:"path" "路径，base64"`
+	Name   string `json:"name" note:"服务名称"`
+	Path   string `json:"path" note:"路径，base64"`
 	Folder string `json:"folder" note:"文件夹名称"`
 }

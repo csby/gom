@@ -31,6 +31,28 @@ func (s *ProxyServer) initId() {
 		if len(item.Id) < 1 {
 			item.Id = gtype.NewGuid()
 		}
+		item.Alive = false
+		item.ConnCount = 0
+
+		for j := 0; j < len(item.Spares); j++ {
+			spare := item.Spares[j]
+			if spare == nil {
+				continue
+			}
+			spare.Alive = false
+			spare.ConnCount = 0
+		}
+	}
+}
+
+func (s *ProxyServer) InitAddrId() {
+	c := len(s.Targets)
+	for i := 0; i < c; i++ {
+		item := s.Targets[i]
+		if item == nil {
+			continue
+		}
+		item.InitAddrId(s.Id)
 	}
 }
 
@@ -50,6 +72,7 @@ func (s *ProxyServer) AddTarget(target *ProxyTarget) error {
 		}
 	}
 
+	target.InitAddrId(s.Id)
 	s.Targets = append(s.Targets, target)
 
 	return nil
@@ -75,9 +98,9 @@ func (s *ProxyServer) DeleteTarget(id string) error {
 	return nil
 }
 
-func (s *ProxyServer) ModifyTarget(target *ProxyTarget) error {
+func (s *ProxyServer) ModifyTarget(target *ProxyTarget) (*ProxyTarget, error) {
 	if target == nil {
-		return fmt.Errorf("target is nil")
+		return nil, fmt.Errorf("target is nil")
 	}
 
 	count := len(s.Targets)
@@ -86,22 +109,23 @@ func (s *ProxyServer) ModifyTarget(target *ProxyTarget) error {
 			continue
 		}
 		if target.Domain == s.Targets[i].Domain && target.Path == s.Targets[i].Path {
-			return fmt.Errorf("domain '%s' and path '%s' not existed", target.Domain, target.Path)
+			return nil, fmt.Errorf("domain '%s' and path '%s' not existed", target.Domain, target.Path)
 		}
 	}
 
-	modifiedCount := 0
+	var modifiedTarget *ProxyTarget = nil
 	for i := 0; i < count; i++ {
 		if target.Id == s.Targets[i].Id {
 			s.Targets[i].CopyFrom(target)
-			modifiedCount++
+			modifiedTarget = s.Targets[i]
+			break
 		}
 	}
-	if modifiedCount <= 0 {
-		return fmt.Errorf("target id '%s' not existed", target.Id)
+	if modifiedTarget == nil {
+		return nil, fmt.Errorf("target id '%s' not existed", target.Id)
 	}
 
-	return nil
+	return modifiedTarget, nil
 }
 
 type ProxyServerAdd struct {

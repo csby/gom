@@ -64,6 +64,8 @@ func NewConfig() *Config {
 			Svc: Service{
 				Tomcats: []*ServiceTomcat{},
 				Others:  []*ServiceOther{},
+				Nginxes: []*ServiceNginx{},
+				Files:   []*ServiceFile{},
 			},
 		},
 		ReverseProxy: Proxy{

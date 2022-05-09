@@ -34,4 +34,6 @@ const (
 	WSReviseProxyTargetAdd = 3021 // 反向代理添加目标地址
 	WSReviseProxyTargetDel = 3022 // 反向代理删除目标地址
 	WSReviseProxyTargetMod = 3023 // 反向代理修改目标地址
+
+	WSReviseProxyTargetStatusChanged = 3031 // 反向代理目标地址活动状态改变
 )

@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/csby/gom/controller"
 	"github.com/csby/gwsf/gtype"
+	"net/http"
 )
 
 type Controllers struct {
@@ -75,6 +76,15 @@ func (s *Controllers) initRouter(router gtype.Router, path *gtype.Path, preHandl
 	router.POST(path.Uri("/svc/nginx/app/detail"), preHandle,
 		s.svc.GetNginxAppDetail, s.svc.GetNginxAppDetailDoc)
 
+	router.POST(path.Uri("/svc/nginx/log/tree"), preHandle,
+		s.svc.GetNginxLogs, s.svc.GetNginxLogsDoc)
+	router.GET(path.Uri("/svc/nginx/log/file/content/:name/:path"), preHandle,
+		s.svc.ViewNginxLogFile, s.svc.ViewNginxLogFileDoc)
+	router.GET(path.Uri("/svc/nginx/log/file/download/:name/:path"), preHandle,
+		s.svc.DownloadNginxLogFile, s.svc.DownloadNginxLogFileDoc)
+	router.POST(path.Uri("/svc/nginx/log/del"), preHandle,
+		s.svc.DeleteNginxLog, s.svc.DeleteNginxLogDoc)
+
 	// 系统服务-自定义
 	router.POST(path.Uri("/svc/custom/list"), preHandle,
 		s.svc.GetCustoms, s.svc.GetCustomsDoc)
@@ -125,6 +135,30 @@ func (s *Controllers) initRouter(router gtype.Router, path *gtype.Path, preHandl
 		s.svc.ModFile, s.svc.ModFileDoc)
 	router.POST(path.Uri("/svc/file/del"), preHandle,
 		s.svc.DeleteFile, s.svc.DeleteFileDoc)
+	fileServers := s.svc.FileServers()
+	fsc := len(fileServers)
+	for fsi := 0; fsi < fsc; fsi++ {
+		fs := fileServers[fsi]
+		if fs == nil {
+			continue
+		}
+		if len(fs.Path) < 1 {
+			continue
+		}
+
+		status := "; disabled"
+		if fs.Enabled {
+			status = "; enabled"
+
+			webPath = &gtype.Path{Prefix: fs.Path}
+			router.ServeFiles(webPath.Uri("/*filepath"), nil, http.Dir(fs.Root), nil)
+
+			router.POST(webPath.Uri(""), nil,
+				fs.Upload, nil)
+		}
+
+		log.Info("file server path: ", fs.Path, status)
+	}
 
 	// 系统资源-磁盘
 	router.POST(path.Uri("/monitor/disk/usage/list"), preHandle,

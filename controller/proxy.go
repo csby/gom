@@ -20,11 +20,16 @@ func NewProxy(log gtype.Log, cfg *config.Config, wsc gtype.SocketChannelCollecti
 
 	inst.proxyLinks = gproxy.NewLinkCollection()
 	inst.proxyServer = &gproxy.Server{
-		StatusChanged:  inst.onProxyServerStatusChanged,
-		OnConnected:    inst.onProxyConnected,
-		OnDisconnected: inst.onProxyDisconnected,
+		StatusChanged:            inst.onProxyServerStatusChanged,
+		OnConnected:              inst.onProxyConnected,
+		OnDisconnected:           inst.onProxyDisconnected,
+		OnTargetAliveChanged:     inst.onTargetAliveChanged,
+		OnTargetConnCountChanged: inst.onTargetConnCountChanged,
 	}
 	inst.proxyServer.SetLog(log)
+	inst.proxyTargets = &ProxyTargetCollection{
+		items: make(map[string]ProxyTargetItem),
+	}
 
 	inst.initRoutes()
 	if len(inst.proxyServer.Routes) > 0 && cfg.ReverseProxy.Disable == false {
@@ -39,8 +44,9 @@ func NewProxy(log gtype.Log, cfg *config.Config, wsc gtype.SocketChannelCollecti
 type Proxy struct {
 	base
 
-	proxyServer *gproxy.Server
-	proxyLinks  gproxy.LinkCollection
+	proxyServer  *gproxy.Server
+	proxyLinks   gproxy.LinkCollection
+	proxyTargets *ProxyTargetCollection
 }
 
 func (s *Proxy) GetProxyServers(ctx gtype.Context, ps gtype.Params) {
@@ -282,6 +288,7 @@ func (s *Proxy) GetProxyTargets(ctx gtype.Context, ps gtype.Params) {
 		return
 	}
 
+	server.InitAddrId()
 	ctx.Success(server.Targets)
 }
 
@@ -528,7 +535,7 @@ func (s *Proxy) ModifyProxyTarget(ctx gtype.Context, ps gtype.Params) {
 		return
 	}
 
-	err = server.ModifyTarget(&argument.Target)
+	target, err := server.ModifyTarget(&argument.Target)
 	if err != nil {
 		ctx.Error(gtype.ErrInput, err)
 		return
@@ -540,10 +547,37 @@ func (s *Proxy) ModifyProxyTarget(ctx gtype.Context, ps gtype.Params) {
 		return
 	}
 
+	target.InitAddrId(argument.ServerId)
+	addr := s.proxyTargets.GetItem(target.AddrId)
+	if addr != nil {
+		target.Alive = addr.IsAlive()
+		target.ConnCount = addr.Count()
+	} else {
+		target.Alive = false
+		target.ConnCount = 0
+	}
+	for i := 0; i < len(target.Spares); i++ {
+		spare := target.Spares[i]
+		if spare == nil {
+			continue
+		}
+		addr = s.proxyTargets.GetItem(spare.AddrId)
+		if addr != nil {
+			spare.Alive = addr.IsAlive()
+			spare.ConnCount = addr.Count()
+		} else {
+			spare.Alive = false
+			spare.ConnCount = 0
+		}
+	}
+
 	s.initRoutes()
 	ctx.Success(nil)
 
-	go s.writeOptMessage(socket.WSReviseProxyTargetMod, argument)
+	go s.writeOptMessage(socket.WSReviseProxyTargetMod, &config.ProxyTargetEdit{
+		ServerId: argument.ServerId,
+		Target:   *target,
+	})
 }
 
 func (s *Proxy) ModifyProxyTargetDoc(doc gtype.Doc, method string, uri gtype.Uri) {
@@ -785,6 +819,7 @@ func (s *Proxy) initRoutes() {
 		if server == nil {
 			continue
 		}
+		server.InitAddrId()
 		if server.Disable {
 			continue
 		}
@@ -800,6 +835,8 @@ func (s *Proxy) initRoutes() {
 			}
 
 			s.proxyServer.Routes = append(s.proxyServer.Routes, gproxy.Route{
+				SourceId:     server.Id,
+				TargetId:     target.Id,
 				IsTls:        server.TLS,
 				Address:      fmt.Sprintf("%s:%s", server.IP, server.Port),
 				Domain:       target.Domain,
@@ -808,12 +845,27 @@ func (s *Proxy) initRoutes() {
 				Version:      target.Version,
 				SpareTargets: target.SpareTargets(),
 			})
+
+			target.SetSourceId(server.Id)
+			s.proxyTargets.AddItem(target.AddrId, target)
+			spareCount := len(target.Spares)
+			for spareIndex := 0; spareIndex < spareCount; spareIndex++ {
+				spare := target.Spares[spareIndex]
+				if spare == nil {
+					continue
+				}
+				spare.SetSourceId(server.Id)
+				spare.SetTargetId(target.Id)
+				s.proxyTargets.AddItem(spare.AddrId, spare)
+			}
 		}
 	}
 }
 
 func (s *Proxy) onProxyServerStatusChanged(status gproxy.Status) {
-	s.LogDebug("proxy service status changed: ", status)
+	if status != gproxy.StatusRunning {
+		s.proxyTargets.Stop()
+	}
 	s.writeOptMessage(socket.WSReviseProxyServiceStatus, s.proxyServer.Result())
 }
 
@@ -825,4 +877,47 @@ func (s *Proxy) onProxyConnected(link gproxy.Link) {
 func (s *Proxy) onProxyDisconnected(link gproxy.Link) {
 	s.proxyLinks.Del(link.Id)
 	s.writeOptMessage(socket.WSReviseProxyConnectionShut, link)
+}
+
+func (s *Proxy) onTargetAliveChanged(addr *gproxy.TargetAddressItem) {
+	if addr == nil {
+		return
+	}
+
+	item := s.proxyTargets.GetItem(addr.AddrId)
+	if item == nil {
+		return
+	}
+
+	item.SetAlive(addr.IstAlive())
+	s.writeOptMessage(socket.WSReviseProxyTargetStatusChanged, &ProxyTargetEntry{
+		SourceId: item.SourceId(),
+		TargetId: item.TargetId(),
+		AddrId:   addr.AddrId,
+		Alive:    item.IsAlive(),
+		Count:    item.Count(),
+	})
+}
+
+func (s *Proxy) onTargetConnCountChanged(addr *gproxy.TargetAddressItem, increase bool) {
+	if addr == nil {
+		return
+	}
+
+	item := s.proxyTargets.GetItem(addr.AddrId)
+	if item == nil {
+		return
+	}
+	if increase {
+		item.IncreaseCount()
+	} else {
+		item.DecreaseCount()
+	}
+	s.writeOptMessage(socket.WSReviseProxyTargetStatusChanged, &ProxyTargetEntry{
+		SourceId: item.SourceId(),
+		TargetId: item.TargetId(),
+		AddrId:   addr.AddrId,
+		Alive:    item.IsAlive(),
+		Count:    item.Count(),
+	})
 }

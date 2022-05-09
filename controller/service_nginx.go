@@ -2,12 +2,15 @@ package controller
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"github.com/csby/gom/model"
 	"github.com/csby/gom/socket"
 	"github.com/csby/gwsf/gfile"
 	"github.com/csby/gwsf/gtype"
+	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -377,6 +380,269 @@ func (s *Service) GetNginxAppDetailDoc(doc gtype.Doc, method string, uri gtype.U
 		AppName: "api",
 	})
 	function.SetOutputDataExample(&model.FileInfo{})
+	function.AddOutputError(gtype.ErrTokenEmpty)
+	function.AddOutputError(gtype.ErrTokenInvalid)
+	function.AddOutputError(gtype.ErrInternal)
+	function.AddOutputError(gtype.ErrInput)
+}
+
+func (s *Service) GetNginxLogs(ctx gtype.Context, ps gtype.Params) {
+	argument := &model.ServerArgument{}
+	err := ctx.GetJson(argument)
+	if err != nil {
+		ctx.Error(gtype.ErrInput, err)
+		return
+	}
+	if len(argument.Name) < 1 {
+		ctx.Error(gtype.ErrInternal, "服务名称(name)为空")
+		return
+	}
+
+	info := s.cfg.Sys.Svc.GetNginxByServiceName(argument.Name)
+	if info == nil {
+		ctx.Error(gtype.ErrInternal, fmt.Sprintf("服务(%s)不存在", argument.Name))
+		return
+	}
+
+	cfg := &model.ServiceLogFile{}
+	s.getTomcatLog(cfg, info.Log, "")
+
+	cfg.Sort()
+	ctx.Success(cfg.Children)
+}
+
+func (s *Service) GetNginxLogsDoc(doc gtype.Doc, method string, uri gtype.Uri) {
+	catalog := s.createCatalog(doc, svcCatalogRoot, svcCatalogNginx)
+	function := catalog.AddFunction(method, uri, "获取服务日志列表")
+	function.SetInputJsonExample(&model.ServerArgument{
+		Name: "example",
+	})
+	function.SetOutputDataExample([]*model.ServiceLogFile{
+		{
+			Name:     "example",
+			Path:     base64.URLEncoding.EncodeToString([]byte("example")),
+			Children: []*model.ServiceLogFile{},
+		},
+	})
+	function.AddOutputError(gtype.ErrTokenEmpty)
+	function.AddOutputError(gtype.ErrTokenInvalid)
+	function.AddOutputError(gtype.ErrInternal)
+	function.AddOutputError(gtype.ErrInput)
+}
+
+func (s *Service) ViewNginxLogFile(ctx gtype.Context, ps gtype.Params) {
+	name := ps.ByName("name")
+	if len(name) < 1 {
+		ctx.Error(gtype.ErrInput, "服务名称(name)为空")
+		return
+	}
+
+	pathName := ps.ByName("path")
+	if len(pathName) < 1 {
+		ctx.Error(gtype.ErrInput, "base64路径为空")
+		return
+	}
+
+	pathData, err := base64.URLEncoding.DecodeString(pathName)
+	if err != nil {
+		ctx.Error(gtype.ErrInput, fmt.Sprintf("路径base64(%s)无效", pathName))
+		return
+	}
+	if len(pathData) < 1 {
+		ctx.Error(gtype.ErrInput, "路径为空")
+		return
+	}
+
+	info := s.cfg.Sys.Svc.GetNginxByServiceName(name)
+	if info == nil {
+		ctx.Error(gtype.ErrInput, fmt.Sprintf("服务(%s)不存在", name))
+		return
+	}
+
+	rootFolder := info.Log
+	if len(rootFolder) < 1 {
+		ctx.Error(gtype.ErrInternal, "日志物理根路径为空")
+		return
+	}
+
+	fullPath := filepath.Join(rootFolder, string(pathData))
+	fi, fe := os.Stat(fullPath)
+	if os.IsNotExist(fe) {
+		ctx.Error(gtype.ErrInternal, fe)
+		return
+	}
+	if fi.IsDir() {
+		ctx.Error(gtype.ErrInternal, "指定的路径为文件夹")
+		return
+	}
+
+	cfgFile, le := os.OpenFile(fullPath, os.O_RDONLY, 0666)
+	if le != nil {
+		ctx.Error(gtype.ErrInternal, le)
+		return
+	}
+	defer cfgFile.Close()
+
+	extName := strings.ToLower(path.Ext(fullPath))
+	if extName == ".xml" {
+		ctx.Response().Header().Set("Content-Type", "application/xml;charset=utf-8")
+	} else if extName == ".json" {
+		ctx.Response().Header().Set("Content-Type", "application/json;charset=utf-8")
+	} else {
+		ctx.Response().Header().Set("Content-Type", "text/plain;charset=utf-8")
+	}
+
+	contentLength := fi.Size()
+	ctx.Response().Header().Set("Content-Length", fmt.Sprint(contentLength))
+
+	io.Copy(ctx.Response(), cfgFile)
+}
+
+func (s *Service) ViewNginxLogFileDoc(doc gtype.Doc, method string, uri gtype.Uri) {
+	catalog := s.createCatalog(doc, svcCatalogRoot, svcCatalogNginx)
+	function := catalog.AddFunction(method, uri, "查看服务日志文件")
+	function.SetNote("返回服务日志文本内容")
+	function.AddOutputError(gtype.ErrTokenEmpty)
+	function.AddOutputError(gtype.ErrTokenInvalid)
+	function.AddOutputError(gtype.ErrInternal)
+	function.AddOutputError(gtype.ErrInput)
+}
+
+func (s *Service) DownloadNginxLogFile(ctx gtype.Context, ps gtype.Params) {
+	name := ps.ByName("name")
+	if len(name) < 1 {
+		ctx.Error(gtype.ErrInput, "服务名称(name)为空")
+		return
+	}
+
+	pathName := ps.ByName("path")
+	if len(pathName) < 1 {
+		ctx.Error(gtype.ErrInput, "base64路径为空")
+		return
+	}
+
+	pathData, err := base64.URLEncoding.DecodeString(pathName)
+	if err != nil {
+		ctx.Error(gtype.ErrInput, fmt.Sprintf("路径base64(%s)无效", pathName))
+		return
+	}
+	if len(pathData) < 1 {
+		ctx.Error(gtype.ErrInput, "路径为空")
+		return
+	}
+
+	info := s.cfg.Sys.Svc.GetNginxByServiceName(name)
+	if info == nil {
+		ctx.Error(gtype.ErrInput, fmt.Sprintf("服务(%s)不存在", name))
+		return
+	}
+
+	rootFolder := info.Log
+	if len(rootFolder) < 1 {
+		ctx.Error(gtype.ErrInternal, "日志物理根路径为空")
+		return
+	}
+
+	fullPath := filepath.Join(rootFolder, string(pathData))
+	fi, fe := os.Stat(fullPath)
+	if os.IsNotExist(fe) {
+		ctx.Error(gtype.ErrInternal, fe)
+		return
+	}
+
+	if fi.IsDir() {
+		fileName := fmt.Sprintf("%s.zip", filepath.Base(fullPath))
+		ctx.Response().Header().Set("Content-Disposition", fmt.Sprint("attachment; filename=", fileName))
+		s.compressFolder(ctx.Response(), fullPath, "", nil)
+	} else {
+		cfgFile, le := os.OpenFile(fullPath, os.O_RDONLY, 0666)
+		if le != nil {
+			ctx.Error(gtype.ErrInternal, le)
+			return
+		}
+		defer cfgFile.Close()
+
+		fileName := filepath.Base(fullPath)
+		ctx.Response().Header().Set("Content-Disposition", fmt.Sprint("attachment; filename=", fileName))
+
+		contentLength := fi.Size()
+		ctx.Response().Header().Set("Content-Length", fmt.Sprint(contentLength))
+
+		io.Copy(ctx.Response(), cfgFile)
+	}
+}
+
+func (s *Service) DownloadNginxLogFileDoc(doc gtype.Doc, method string, uri gtype.Uri) {
+	catalog := s.createCatalog(doc, svcCatalogRoot, svcCatalogNginx)
+	function := catalog.AddFunction(method, uri, "下载服务日志文件")
+	function.SetNote("返回应服务日志文本内容")
+	function.SetRemark("如果指定的路径为文件夹，则返回文件夹的压缩内容")
+	function.AddOutputError(gtype.ErrTokenEmpty)
+	function.AddOutputError(gtype.ErrTokenInvalid)
+	function.AddOutputError(gtype.ErrInternal)
+	function.AddOutputError(gtype.ErrInput)
+}
+
+func (s *Service) DeleteNginxLog(ctx gtype.Context, ps gtype.Params) {
+	argument := &model.ServiceTomcatCfgFolder{}
+	err := ctx.GetJson(argument)
+	if err != nil {
+		ctx.Error(gtype.ErrInput, err)
+		return
+	}
+	if len(argument.Name) < 1 {
+		ctx.Error(gtype.ErrInput, "服务名称(name)为空")
+		return
+	}
+	if len(argument.Path) < 1 {
+		ctx.Error(gtype.ErrInput, "路径(path)为空")
+		return
+	}
+	pathData, pe := base64.URLEncoding.DecodeString(argument.Path)
+	if pe != nil {
+		ctx.Error(gtype.ErrInput, fmt.Sprintf("路径(%s)不是有效的base64字符串: ", argument.Path), pe)
+		return
+	}
+	path := string(pathData)
+	if len(path) < 1 {
+		ctx.Error(gtype.ErrInput, "路径为空")
+		return
+	}
+
+	info := s.cfg.Sys.Svc.GetTomcatByServiceName(argument.Name)
+	if info == nil {
+		ctx.Error(gtype.ErrInternal, fmt.Sprintf("服务(%s)不存在", argument.Name))
+		return
+	}
+	rootFolder := info.WebLog
+	if len(rootFolder) < 1 {
+		ctx.Error(gtype.ErrInternal, "日志物理根路径为空")
+		return
+	}
+
+	fullPath := filepath.Join(rootFolder, path)
+	err = os.RemoveAll(fullPath)
+	if err != nil {
+		ctx.Error(gtype.ErrInternal, "删除失败: ", err)
+		return
+	}
+
+	args := &model.ServerArgument{
+		Name: argument.Name,
+	}
+
+	ctx.Success(args)
+}
+
+func (s *Service) DeleteNginxLogDoc(doc gtype.Doc, method string, uri gtype.Uri) {
+	catalog := s.createCatalog(doc, svcCatalogRoot, svcCatalogNginx)
+	function := catalog.AddFunction(method, uri, "删除服务日志")
+	function.SetInputJsonExample(&model.ServiceTomcatCfgFolder{
+		Name: "example",
+	})
+	function.SetOutputDataExample(&model.ServerArgument{
+		Name: "example",
+	})
 	function.AddOutputError(gtype.ErrTokenEmpty)
 	function.AddOutputError(gtype.ErrTokenInvalid)
 	function.AddOutputError(gtype.ErrInternal)
