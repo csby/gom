@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/csby/gwsf/gcfg"
-	"github.com/csby/gwsf/gtype"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -14,9 +13,6 @@ import (
 type Config struct {
 	sync.RWMutex
 	gcfg.Config
-
-	Sys          System `json:"sys" note:"系统管理"`
-	ReverseProxy Proxy  `json:"reverseProxy" note:"反向代理配置"`
 }
 
 func NewConfig() *Config {
@@ -51,42 +47,13 @@ func NewConfig() *Config {
 					Enabled: true,
 				},
 				Opt: gcfg.SiteOpt{
-					Users: []gcfg.SiteOptUser{
+					Users: []*gcfg.SiteOptUser{
 						{
-							"Admin",
-							"1",
+							Account:  "admin",
+							Password: "1",
+							Name:     "管理员",
 						},
 					},
-				},
-			},
-		},
-		Sys: System{
-			Svc: Service{
-				Tomcats: []*ServiceTomcat{},
-				Others:  []*ServiceOther{},
-				Nginxes: []*ServiceNginx{},
-				Files:   []*ServiceFile{},
-			},
-		},
-		ReverseProxy: Proxy{
-			Servers: []*ProxyServer{
-				{
-					Id:      gtype.NewGuid(),
-					Name:    "http",
-					Disable: true,
-					TLS:     false,
-					IP:      "",
-					Port:    "80",
-					Targets: []*ProxyTarget{},
-				},
-				{
-					Id:      gtype.NewGuid(),
-					Name:    "https",
-					Disable: true,
-					TLS:     true,
-					IP:      "",
-					Port:    "443",
-					Targets: []*ProxyTarget{},
 				},
 			},
 		},
@@ -111,7 +78,6 @@ func (s *Config) LoadFromFile(filePath string) error {
 
 	err = json.Unmarshal(bytes, s)
 	if err == nil {
-		s.ReverseProxy.initId()
 	}
 
 	return err
