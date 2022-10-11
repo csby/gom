@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/csby/gwsf/gcfg"
+	"github.com/csby/gwsf/gtype"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -44,16 +45,85 @@ func NewConfig() *Config {
 			},
 			Site: gcfg.Site{
 				Doc: gcfg.SiteDoc{
-					Enabled: true,
+					Enabled:       true,
+					DownloadTitle: "从github下载",
+					DownloadUrl:   "https://github.com/csby/gwsf-doc/releases",
 				},
 				Opt: gcfg.SiteOpt{
 					Users: []*gcfg.SiteOptUser{
 						{
 							Account:  "admin",
-							Password: "1",
+							Password: "admin",
 							Name:     "管理员",
 						},
 					},
+					Ldap: gcfg.SiteOptLdap{
+						Host: "127.0.0.1",
+						Port: 389,
+						Base: "dc=dev,dc=local",
+					},
+				},
+			},
+			Cloud: gcfg.Https{
+				Enabled:     false,
+				Port:        6931,
+				BehindProxy: false,
+				Cert: gcfg.Crt{
+					Ca: gcfg.CrtCa{
+						File: "",
+					},
+					Server: gcfg.CrtPfx{
+						File:     "",
+						Password: "",
+					},
+				},
+				RequestClientCert: true,
+			},
+			Node: gcfg.Node{
+				Enabled: false,
+				CloudServer: gcfg.Cloud{
+					Address: "",
+					Port:    6931,
+				},
+				Forward: gcfg.NodeFwd{
+					Enable: false,
+					Items:  []*gcfg.Fwd{},
+				},
+			},
+			ReverseProxy: gcfg.Proxy{
+				Enabled: true,
+				Servers: []*gcfg.ProxyServer{
+					{
+						Id:      gtype.NewGuid(),
+						Name:    "http",
+						Disable: true,
+						TLS:     false,
+						IP:      "",
+						Port:    "80",
+						Targets: []*gcfg.ProxyTarget{},
+					},
+					{
+						Id:      gtype.NewGuid(),
+						Name:    "https",
+						Disable: true,
+						TLS:     true,
+						IP:      "",
+						Port:    "443",
+						Targets: []*gcfg.ProxyTarget{},
+					},
+				},
+			},
+			Sys: gcfg.System{
+				Svc: gcfg.Service{
+					Enabled: true,
+					Custom: gcfg.ServiceCustom{
+						DownloadTitle: "从github下载",
+						DownloadUrl:   "https://github.com/csby/gtool/releases",
+					},
+					Tomcats: []*gcfg.ServiceTomcat{},
+					Others:  []*gcfg.ServiceOther{},
+					Nginxes: []*gcfg.ServiceNginx{},
+					Files:   []*gcfg.ServiceFile{},
 				},
 			},
 		},

@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/csby/gwsf/gcloud"
+	"github.com/csby/gwsf/gnode"
 	"github.com/csby/gwsf/gopt"
 	"github.com/csby/gwsf/gtype"
 	"net/http"
@@ -17,7 +19,9 @@ func NewHandler(log gtype.Log) gtype.Handler {
 type Handler struct {
 	gtype.Base
 
-	ctrl Controllers
+	cloud gcloud.Handler
+	node  gnode.Handler
+	ctrl  Controllers
 }
 
 func (s *Handler) InitRouting(router gtype.Router) {
@@ -62,16 +66,27 @@ func (s *Handler) AfterRouting(ctx gtype.Context) {
 }
 
 func (s *Handler) ExtendOptSetup(opt gtype.Option) {
-	if opt != nil {
-		opt.SetCloud(cfg.Cloud.Enabled)
-		opt.SetNode(cfg.Node.Enabled)
+	if opt == nil {
+		return
 	}
+
+	opt.SetCloud(cfg.Cloud.Enabled)
+	opt.SetNode(cfg.Node.Enabled)
 }
 
 func (s *Handler) ExtendOptApi(router gtype.Router,
 	path *gtype.Path,
 	preHandle gtype.HttpHandle,
 	opt gtype.Opt) {
+	s.cloud = gcloud.NewHandler(s.GetLog(), &cfg.Config, opt.Wsc())
+	s.node = gnode.NewHandler(s.GetLog(), &cfg.Config, opt.Wsc())
+	if cfg.Cloud.Enabled {
+		s.cloud.Init(router, path, preHandle, nil)
+	}
+	if cfg.Node.Enabled {
+		s.node.Init(router, path, preHandle)
+	}
+
 	s.ctrl.initController(opt.Wsc())
 	s.ctrl.initRouter(router, path, preHandle)
 }

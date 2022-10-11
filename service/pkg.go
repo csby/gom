@@ -47,7 +47,7 @@ func (s *Pkg) Run() {
 	fmt.Println("app file name: ", appFileName)
 
 	// shell
-	shellBinName := fmt.Sprintf("%s%s", "go_build_github_com_csby_gom_gshell", binExt)
+	shellBinName := fmt.Sprintf("%s%s", "go_build_github_com_csby_gtool_gshell", binExt)
 	fmt.Println("shell bin name: ", shellBinName)
 	shellFileName := fmt.Sprintf("%s%s", "gshell", binExt)
 	fmt.Println("shell file name: ", shellFileName)
@@ -83,7 +83,7 @@ func (s *Pkg) Run() {
 					},
 				},
 				Src: gpkg.Source{
-					Enable: true,
+					Enable: false,
 					Root:   srcFolder,
 					Ignore: goIgnore,
 				},
@@ -97,12 +97,22 @@ func (s *Pkg) Run() {
 						},
 					},
 					{
-						Enable: false,
+						Enable: true,
 						Name:   "opt",
 						Src: gpkg.Source{
 							Root:   optFolder,
 							Ignore: vueIgnore,
 						},
+					},
+				},
+			},
+			{
+				Enable: true,
+				Name:   "gshell",
+				Bin: gpkg.Binary{
+					Root: binFolder,
+					Files: map[string]string{
+						shellBinName: shellFileName,
 					},
 				},
 			},

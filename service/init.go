@@ -16,7 +16,7 @@ const (
 	moduleType    = "server"
 	moduleName    = "gom"
 	moduleRemark  = "操作系统管理器"
-	moduleVersion = "1.0.3.0"
+	moduleVersion = "1.0.4.0"
 )
 
 var (
@@ -36,6 +36,7 @@ func init() {
 	cfg.Module.Remark = moduleRemark
 	cfg.Module.Path = moduleArgs.ModulePath()
 	cfg.Svc.BootTime = now
+	cfg.Node.InstanceId = gtype.NewGuid()
 
 	rootFolder := filepath.Dir(moduleArgs.ModuleFolder())
 	cfgFolder := filepath.Join(rootFolder, "cfg")
@@ -79,6 +80,40 @@ func init() {
 		if certFilePath == "" {
 			certFilePath = filepath.Join(rootFolder, "crt", "server.pfx")
 			cfg.Https.Cert.Server.File = certFilePath
+		}
+	}
+	if cfg.Cloud.Enabled {
+		certFilePath := cfg.Cloud.Cert.Server.File
+		if certFilePath == "" {
+			certFilePath = filepath.Join(rootFolder, "crt", "dev.pfx")
+			cfg.Cloud.Cert.Server.File = certFilePath
+		}
+
+		certFilePath = cfg.Cloud.Cert.Ca.File
+		if certFilePath == "" {
+			certFilePath = filepath.Join(rootFolder, "crt", "ca.crt")
+			cfg.Cloud.Cert.Ca.File = certFilePath
+		}
+
+		if cfg.Cloud.Port < 1 {
+			cfg.Cloud.Port = 6931
+		}
+	}
+	if cfg.Node.Enabled {
+		certFilePath := cfg.Node.Cert.Server.File
+		if certFilePath == "" {
+			certFilePath = filepath.Join(rootFolder, "crt", "dev.pfx")
+			cfg.Node.Cert.Server.File = certFilePath
+		}
+
+		certFilePath = cfg.Node.Cert.Ca.File
+		if certFilePath == "" {
+			certFilePath = filepath.Join(rootFolder, "crt", "ca.crt")
+			cfg.Node.Cert.Ca.File = certFilePath
+		}
+
+		if cfg.Node.CloudServer.Port < 1 {
+			cfg.Node.CloudServer.Port = 6931
 		}
 	}
 
