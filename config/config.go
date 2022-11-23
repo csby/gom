@@ -179,6 +179,31 @@ func (s *Config) SaveToFile(filePath string) error {
 	return err
 }
 
+func (s *Config) DoLoad() (*gcfg.Config, error) {
+	c := &Config{}
+	e := c.LoadFromFile(s.Path)
+	if e != nil {
+		return nil, e
+	}
+
+	return &c.Config, nil
+}
+
+func (s *Config) DoSave(cfg *gcfg.Config) error {
+	if cfg == nil {
+		return nil
+	}
+
+	c := &Config{}
+	e := c.LoadFromFile(s.Path)
+	if e != nil {
+		return e
+	}
+
+	c.Config = *cfg
+	return c.SaveToFile(s.Path)
+}
+
 func (s *Config) String() string {
 	bytes, err := json.Marshal(s)
 	if err != nil {
